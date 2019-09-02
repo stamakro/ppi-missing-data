@@ -20,7 +20,7 @@ def predict(Atest, Ytrain, Ytest,thres = 0.3):
 start = int(sys.argv[1])
 
 
-#comment 
+#comment
 dag, mapping = read_ontology_from_file('../data/go/go-final.obo')
 
 
@@ -30,13 +30,21 @@ print('Loading go...')
 print('Loading experimental PPI network...')
 
 [Aexp, ppiGene2row, ppiRow2gene] = getPPInetwork('biogrid')
+assert np.max(np.abs((Aexp - Aexp.T)) < 1e-10)
 
 [Aexp, ppiGene2row, ppiRow2gene] = matchNetworkAndLabels(Aexp, ppiGene2row, ppiRow2gene, geneNames)
 
-#datasources = np.array(['coexpression', 'experiments', 'neighborhood_transferred', 'coexpression_transferred', 'experiments_transferred', 'textmining', 'cooccurence', 'fusion', 'textmining_transferred', 'database', 'homology', 'neighborhood', 'database_transferred'])
+[Aexp2, ppiGene2rowS, ppiRow2geneS] = getPPInetwork('experiments')
+assert np.max(np.abs((Aexp - Aexp.T)) < 1e-10)
+[Aexp2, _, _] = matchNetworkAndLabels(Aexp2, ppiGene2rowS, ppiRow2geneS, geneNames)[0]
 
-datasources = np.array(['coexpression', 'experiments', 'neighborhood_transferred', 'coexpression_transferred',
-'experiments_transferred', 'textmining', 'cooccurence','fusion', 'textmining_transferred', 'database', 'homology'])
+threshold = np.median(Aexp2[Aexp2 > 0])
+Aexp2 = (Aexp2 >= threshold).astype(int)
+
+Aexp = np.maximum(Aexp, Aexp2)
+
+datasources = np.array(['coexpression', 'neighborhood_transferred', 'coexpression_transferred', 'experiments_transferred', 'textmining', 'cooccurence','fusion', 'textmining_transferred', 'homology'])
+assert datasource.shape[0] == 9
 
 with open('../data/interactions/biogrid-final/row2protein.pkl') as f:
 	ppiRow2gene = pickle.load(f)
@@ -48,7 +56,10 @@ for k in ppiRow2gene:
 for i, ds in enumerate(datasources):
 	print 'Reading predicted', i
 	with open('../data/interactions/string-final/' + ds + '.pkl') as f:
-		At = pickle.load(f)
+		At = pickle.load(f).toarray()
+
+		assert np.max(np.abs((At - At.T)) < 1e-10)
+
 		At = matchNetworkAndLabels(At, ppiGene2row, ppiRow2gene, geneNames)[0]
 
 	if i == 0:

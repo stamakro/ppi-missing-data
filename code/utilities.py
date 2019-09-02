@@ -102,7 +102,7 @@ def matchNetworkAndLabels(A, ppiGene2row, ppiRow2gene, geneNames):
 def goLoader(species):
 
 	with open('../data/' + species + '/annotations/Y.pkl') as f:
-		Y = pickle.load(f)
+		Y = pickle.load(f).toarray()
 
 	with open('../data/' + species + '/annotations/geneNames.pkl') as f:
 		geneNames = pickle.load(f)
@@ -127,7 +127,7 @@ def getPPInetwork(species, datasource):
 	if datasource == 'biogrid':
 
 		with open('../data/' + species + '/interactions/biogrid-final/A.pkl') as f:
-			A = pickle.load(f)
+			A = pickle.load(f).toarray()
 
 		with open('../data/' + species + '/interactions/biogrid-final/row2protein.pkl') as f:
 			ppiRow2gene = pickle.load(f)
@@ -136,17 +136,19 @@ def getPPInetwork(species, datasource):
 	elif datasource == 'dl':
 		print('gene & row info not available, but equal to result of matchNetworkAndLabels')
 		with open('../data/' + species + '/interactions/dl/lasagna.pkl') as f:
-			A = pickle.load(f)
+			A = pickle.load(f).toarray()
 
-		A = (A >= 0.5).astype(float)
+		A += A.T
 		return [A, None, None]
 
 	else:
 		with open('../data/' + species + '/interactions/string-final/' + datasource + '.pkl') as f:
-			A = pickle.load(f)
+			A = pickle.load(f).toarray()
 
 		with open('../data/' + species + '/interactions/biogrid-final/row2protein.pkl') as f:
 			ppiRow2gene = pickle.load(f)
+
+	A += A.T
 
 	ppiGene2row = dict()
 	for k in ppiRow2gene:
@@ -164,12 +166,12 @@ def getMultiplePPInetworks(species, datasources):
 	#see string db faq for details
 	for i, ds in enumerate(datasources):
 		with open('../data/' + species + '/interactions/string-final/' + ds + '.pkl') as f:
-			At = pickle.load(f)
+			At = pickle.load(f).toarray()
 
 		if i == 0:
 			A = np.zeros((datasources.shape[0], At.shape[0], At.shape[1]))
 
-		A[i] = At
+		A[i] = At + At.T
 
 
 	#homology correction
