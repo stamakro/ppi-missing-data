@@ -19,7 +19,6 @@ def predict(Atest, Ytrain, Ytest,thres = 0.3):
 
 start = int(sys.argv[1])
 
-
 dag, mapping = read_ontology_from_file('../data/go/go-final.obo')
 
 
