@@ -1,13 +1,33 @@
 import numpy as np
-from sklearn.model_selection import KFold
-from sklearn.metrics import precision_recall_fscore_support, average_precision_score, roc_auc_score
+from sklearn.metrics import precision_recall_fscore_support, average_precision_score, roc_auc_score, f1_score
 import pickle
-from scipy.stats import rankdata, spearmanr, pearsonr, skew, skewtest
+from scipy.stats import rankdata, spearmanr, pearsonr
 import matplotlib.pyplot as plt
 from sklearn.model_selection import KFold
-from sklearn.metrics import average_precision_score
 import sys
 from copy import deepcopy
+from gyros import normalizedSemanticDistance
+
+def predict(Atest, Ytrain, Ytest, ic, thresholds = None):
+
+	if thresholds is None:
+		thresholds = np.linspace(0.0, 1.0, 21)
+
+	Y_posteriors = gbaPredict(Atest, Ytrain)
+
+	pc_auprc = average_precision_score(Ytest.T, Y_posteriors.T, average=None)
+
+	pc_f1 = np.zeros((thresholds.shape[0], Ytest.shape[0]))
+	pc_nsd = np.zeros((thresholds.shape[0], Ytest.shape[0]))
+
+	for i, thres in enumerate(thresholds):
+		Ypred = (Y_posteriors >= thres).astype(int)
+
+		pc_nsd[i] = normalizedSemanticDistance(Ytest, (Y_posteriors >= thres).astype(int), ic)[2]
+		pc_f1[i] = f1_score(Ytest.T, Y_posteriors.T, average=None)
+
+
+	return pc_auprc, pc_f1[np.argmax(np.mean(pc_f1, 1))], pc_nsd[np.argmin(np.mean(pc_nsd, 1))]
 
 
 def gbaPredict(A, Ytrain):
