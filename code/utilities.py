@@ -23,12 +23,43 @@ def predict(Atest, Ytrain, Ytest, ic, thresholds = None):
 	for i, thres in enumerate(thresholds):
 		Ypred = (Y_posteriors >= thres).astype(int)
 
-		pc_nsd[i] = normalizedSemanticDistance(Ytest, (Y_posteriors >= thres).astype(int), ic)[2]
-		pc_f1[i] = f1_score(Ytest.T, Y_posteriors.T, average=None)
+		pc_nsd[i] = normalizedSemanticDistance(Ytest, Ypred, ic)[2]
+		pc_f1[i] = f1_score(Ytest.T, Ypred.T, average=None)
 
 
 	return pc_auprc, pc_f1[np.argmax(np.mean(pc_f1, 1))], pc_nsd[np.argmin(np.mean(pc_nsd, 1))]
 
+
+def predictBayes(Atest, Ytrain, Ytest, ic, thresholds = None):
+
+	if thresholds is None:
+		thresholds = np.linspace(0.0, 1.0, 21)
+
+
+	priors = np.sum(Ytrain, 0) / float(Ytrain.shape[0])	
+	assert priors.shape[0] == Ytrain.shape[1]
+
+
+	Y_likelihood = gbaPredict(Atest, Ytrain)
+
+	
+	marginal = Y_likelihood * priors + (1 - Y_likelihood) * (1 - priors)
+
+	Y_posteriors = Y_likelihood * priors / marginal
+
+	pc_auprc = average_precision_score(Ytest.T, Y_posteriors.T, average=None)
+
+	pc_f1 = np.zeros((thresholds.shape[0], Ytest.shape[0]))
+	pc_nsd = np.zeros((thresholds.shape[0], Ytest.shape[0]))
+
+	for i, thres in enumerate(thresholds):
+		Ypred = (Y_posteriors >= thres).astype(int)
+
+		pc_nsd[i] = normalizedSemanticDistance(Ytest, Ypred, ic)[2]
+		pc_f1[i] = f1_score(Ytest.T, Ypred.T, average=None)
+
+
+	return pc_auprc, pc_f1[np.argmax(np.mean(pc_f1, 1))], pc_nsd[np.argmin(np.mean(pc_nsd, 1))]
 
 def gbaPredict(A, Ytrain):
 
@@ -155,10 +186,13 @@ def getPPInetwork(species, datasource):
 
 	elif datasource == 'dl':
 		print('gene & row info not available, but equal to result of matchNetworkAndLabels')
-		with open('../data/' + species + '/interactions/dl/lasagna.pkl') as f:
+		with open('../data/' + species + '/interactions/dl/A.pkl') as f:
 			A = pickle.load(f).toarray()
 
 		A += A.T
+
+		A = (A >= 0.5).astype(float)
+
 		return [A, None, None]
 
 	else:
